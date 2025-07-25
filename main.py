@@ -21,6 +21,7 @@ def ping():
     return jsonify({
         'status': 'alive',
         'message': 'Bot is running',
+        'bot_status': 'active' if getattr(client, 'listening', False) else 'stopped',
         'timestamp': time.time()
     })
 
@@ -38,7 +39,7 @@ def home():
     return jsonify({
         'message': 'Zalo Bot Server đang chạy',
         'status': 'running',
-        'bot_status': 'active' if client else 'stopped'
+        'bot_status': 'active' if getattr(client, 'listening', False) else 'stopped'
     })
 
 def run_flask():
@@ -344,7 +345,8 @@ def main():
     bot_thread = threading.Thread(target=bot_initiate_conversation, args=(client,), daemon=True)
     bot_thread.start()
     print(f"{Fore.CYAN}🕐 Bot đã bắt đầu chủ động nhắn tin mỗi phút với xác suất 50%.")
-
+        # Cập nhật trạng thái client đã hoạt động
+    client.listening = True
     # Chạy bot chính
     client.listen()
 
