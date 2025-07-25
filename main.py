@@ -34,10 +34,11 @@ def keep_alive():
 
 @app.route('/')
 def home():
+    global bot_client
     return jsonify({
-        'message': 'Zalo Bot Server',
-        'endpoints': ['/ping', '/keep-alive'],
-        'status': 'running'
+        'message': 'Zalo Bot Server đang chạy',
+        'status': 'running',
+        'bot_status': 'active' if bot_client else 'stopped'
     })
 
 def run_flask():
