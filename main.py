@@ -52,7 +52,7 @@ def keep_alive_ping():
     while True:
         try:
             time.sleep(300)  # Đợi 5 phút
-            response = requests.get(f"{repl_url}/ping", timeout=10)
+            response = requests.get(f"{"https://botzl-x2ld.onrender.com"}/ping", timeout=10)
             if response.status_code == 200:
                 print(
                     f"{Fore.GREEN}Keep-alive ping successful at {time.ctime()}"
