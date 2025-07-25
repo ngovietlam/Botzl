@@ -34,11 +34,11 @@ def keep_alive():
 
 @app.route('/')
 def home():
-    global bot_client
+    global client
     return jsonify({
         'message': 'Zalo Bot Server đang chạy',
         'status': 'running',
-        'bot_status': 'active' if bot_client else 'stopped'
+        'bot_status': 'active' if client else 'stopped'
     })
 
 def run_flask():
@@ -53,7 +53,7 @@ def keep_alive_ping():
     while True:
         try:
             time.sleep(300)  # Đợi 5 phút
-            response = requests.get(f"{"https://botzl-x2ld.onrender.com"}/ping", timeout=10)
+            response = requests.get("https://botzl-x2ld.onrender.com/ping", timeout=10)
             if response.status_code == 200:
                 print(
                     f"{Fore.GREEN}Keep-alive ping successful at {time.ctime()}"
@@ -335,8 +335,8 @@ conversation_starters = [
 def main():
     """Hàm main để chạy bot trực tiếp và Flask keep-alive"""
     # Chạy Flask ở process riêng
-    flask_process = Process(target=run_flask)
-    flask_process.start()
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
 
    
 
