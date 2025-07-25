@@ -179,7 +179,7 @@ class CustomClient(ZaloAPI):
     def ask_ai(self, author_id):
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
-            "Authorization": "Bearer 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",
+            "Authorization": "Bearer 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",
             "Content-Type": "application/json"
         }
 
@@ -352,7 +352,7 @@ def bot_initiate_conversation(client):
         if random.random() < 0.5:  # 50% xác suất
             try:
                 message = random.choice(conversation_starters)
-                thread_id = "124370956160882574"  # Thay bằng ID của bạn
+                thread_id = "6655699114122743089"  # Thay bằng ID của bạn
                 thread_type = ThreadType.GROUP  # Loại thread (USER hoặc GROUP)
                 client.send(Message(text=message), thread_id, thread_type)
                 print(f"{Fore.CYAN}Bot đã chủ động nhắn tin: {message}")
