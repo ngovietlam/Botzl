@@ -4,7 +4,7 @@ import threading
 import time
 import requests
 import random  # Thêm import random nếu chưa có
-# from flask import Flask, jsonify
+from flask import Flask, jsonify
 from zlapi import ZaloAPI, ZaloAPIException
 from zlapi.models import *
 from colorama import Fore, Style, init
@@ -12,57 +12,57 @@ from googleapiclient.discovery import build
 from module import handle_help, handle_ping, handle_info, handle_say, handle_count
 from config import imei, session_cookies
 # Tạo Flask app cho keep-alive
-# app = Flask(__name__)
+app = Flask(__name__)
 
-# @app.route('/ping')
-# def ping():
-#     return jsonify({
-#         'status': 'alive',
-#         'message': 'Bot is running',
-#         'timestamp': time.time()
-#     })
+@app.route('/ping')
+def ping():
+    return jsonify({
+        'status': 'alive',
+        'message': 'Bot is running',
+        'timestamp': time.time()
+    })
 
-# @app.route('/keep-alive')
-# def keep_alive():
-#     return jsonify({
-#         'status': 'ok',
-#         'uptime': time.time(),
-#         'bot_status': 'running'
-#     })
+@app.route('/keep-alive')
+def keep_alive():
+    return jsonify({
+        'status': 'ok',
+        'uptime': time.time(),
+        'bot_status': 'running'
+    })
 
-# @app.route('/')
-# def home():
-#     return jsonify({
-#         'message': 'Zalo Bot Server',
-#         'endpoints': ['/ping', '/keep-alive'],
-#         'status': 'running'
-#     })
+@app.route('/')
+def home():
+    return jsonify({
+        'message': 'Zalo Bot Server',
+        'endpoints': ['/ping', '/keep-alive'],
+        'status': 'running'
+    })
 
-# def run_flask():
-#     """Chạy Flask server trong thread riêng"""
-#     app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+def run_flask():
+    """Chạy Flask server trong thread riêng"""
+    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
 
-# def keep_alive_ping():
-#     """Gửi ping request định kỳ để giữ server alive"""
-#     # Thay YOUR_REPL_URL bằng URL thực tế của Replit project
-#     repl_url = "https://your-project-name.your-username.repl.co"
+def keep_alive_ping():
+    """Gửi ping request định kỳ để giữ server alive"""
+    # Thay YOUR_REPL_URL bằng URL thực tế của Replit project
+    repl_url = "https://your-project-name.your-username.repl.co"
 
-#     while True:
-#         try:
-#             time.sleep(300)  # Đợi 5 phút
-#             response = requests.get(f"{repl_url}/ping", timeout=10)
-#             if response.status_code == 200:
-#                 print(
-#                     f"{Fore.GREEN}Keep-alive ping successful at {time.ctime()}"
-#                 )
-#             else:
-#                 print(
-#                     f"{Fore.YELLOW}Keep-alive ping failed with status: {response.status_code}"
-#                 )
-#         except requests.exceptions.RequestException as e:
-#             print(f"{Fore.RED}Keep-alive ping error: {e}")
-#         except Exception as e:
-#             print(f"{Fore.RED}Unexpected error in keep-alive: {e}")
+    while True:
+        try:
+            time.sleep(300)  # Đợi 5 phút
+            response = requests.get(f"{repl_url}/ping", timeout=10)
+            if response.status_code == 200:
+                print(
+                    f"{Fore.GREEN}Keep-alive ping successful at {time.ctime()}"
+                )
+            else:
+                print(
+                    f"{Fore.YELLOW}Keep-alive ping failed with status: {response.status_code}"
+                )
+        except requests.exceptions.RequestException as e:
+            print(f"{Fore.RED}Keep-alive ping error: {e}")
+        except Exception as e:
+            print(f"{Fore.RED}Unexpected error in keep-alive: {e}")
 
 
 class CustomClient(ZaloAPI):

@@ -119,3 +119,7 @@ if __name__ == '__main__':
 
     # Chạy Flask server với binding rõ ràng
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+
+# git add .
+# git commit -m "Cập nhật code bot Zalo, sửa lỗi import và AI"
+# git push origin main
