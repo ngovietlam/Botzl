@@ -1,0 +1,7 @@
+
+flask
+requests
+colorama
+google-api-python-client
+zlapi
+gunicorn

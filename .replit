@@ -2,7 +2,8 @@ entrypoint = "main.py"
 modules = ["python-3.11"]
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
+packages = ["gmp"]
 
 [unitTest]
 language = "python3"
@@ -13,3 +14,19 @@ requiredFiles = [".replit", "replit.nix"]
 [deployment]
 run = ["python3", "main.py"]
 deploymentTarget = "cloudrun"
+
+[workflows]
+runButton = "Run Flask App"
+
+[[workflows.workflow]]
+name = "Run Flask App"
+author = 9314931
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 app.py"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
