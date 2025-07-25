@@ -11,6 +11,8 @@ from colorama import Fore, Style, init
 from googleapiclient.discovery import build
 from module import handle_help, handle_ping, handle_info, handle_say, handle_count
 from config import imei, session_cookies
+from multiprocessing import Process
+
 # Tạo Flask app cho keep-alive
 app = Flask(__name__)
 
@@ -39,8 +41,8 @@ def home():
     })
 
 def run_flask():
-    """Chạy Flask server trong thread riêng"""
-    app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 def keep_alive_ping():
     """Gửi ping request định kỳ để giữ server alive"""
@@ -330,7 +332,11 @@ conversation_starters = [
     "Cậu có muốn mình kể một câu chuyện vui không?"
 ]
 def main():
-    """Hàm main để chạy bot trực tiếp"""
+    """Hàm main để chạy bot trực tiếp và Flask keep-alive"""
+    # Chạy Flask ở process riêng
+    flask_process = Process(target=run_flask)
+    flask_process.start()
+
     # Khởi tạo client
     client = CustomClient('api_key',
                           'secret_key',
@@ -342,7 +348,7 @@ def main():
     bot_thread.start()
     print(f"{Fore.CYAN}🕐 Bot đã bắt đầu chủ động nhắn tin mỗi phút với xác suất 50%.")
 
-    # Chạy bot
+    # Chạy bot chính
     client.listen()
 
 def bot_initiate_conversation(client):
@@ -362,3 +368,6 @@ def bot_initiate_conversation(client):
 if __name__ == "__main__":
     main()
 
+# git add .
+# git commit -m "Fix run_flask with PORT env and run Flask + bot in parallel"
+# git push
