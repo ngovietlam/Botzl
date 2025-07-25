@@ -337,11 +337,7 @@ def main():
     flask_process = Process(target=run_flask)
     flask_process.start()
 
-    # Khởi tạo client
-    client = CustomClient('api_key',
-                          'secret_key',
-                          imei=imei,
-                          session_cookies=session_cookies)
+   
 
     # Chạy thread nhắn tin chủ động
     bot_thread = threading.Thread(target=bot_initiate_conversation, args=(client,), daemon=True)
@@ -364,7 +360,11 @@ def bot_initiate_conversation(client):
                 print(f"{Fore.CYAN}Bot đã chủ động nhắn tin: {message}")
             except Exception as e:
                 print(f"{Fore.RED}Lỗi khi bot chủ động nhắn tin: {e}")
-
+ # Khởi tạo client
+client = CustomClient('api_key',
+                        'secret_key',
+                        imei=imei,
+                        session_cookies=session_cookies)
 if __name__ == "__main__":
     main()
 
