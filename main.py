@@ -3,12 +3,13 @@ import os
 import threading
 import time
 import requests
+import random  # Thêm import random nếu chưa có
 # from flask import Flask, jsonify
 from zlapi import ZaloAPI, ZaloAPIException
 from zlapi.models import *
 from colorama import Fore, Style, init
 from googleapiclient.discovery import build
-#from module import  handle_ping, handle_info, handle_say, handle_count
+from module import handle_help, handle_ping, handle_info, handle_say, handle_count
 from config import imei, session_cookies
 # Tạo Flask app cho keep-alive
 # app = Flask(__name__)
@@ -78,43 +79,50 @@ class CustomClient(ZaloAPI):
         self.prefix = "!"
         self.excluded_user_ids = ['207754413506549669']
         self.data_file = 'user_data.json'
+        self.training_data_file = 'ai_training_data.json'  # File lưu dữ liệu huấn luyện AI
         self.message_counts = {}
-        self.count_data = {}  # Thêm biến lưu trữ count cho từng user
+        self.count_data = {}
         self.waiting_for_selection = {}
-        # self.commands = {
-        #     "help": {
-        #         "desc": "Hiển thị danh sách lệnh",
-        #         "func": handle_help
-        #     },
-        #     "ping": {
-        #         "desc": "Kiểm tra bot có hoạt động không",
-        #         "func": handle_ping
-        #     },
-        #     "info": {
-        #         "desc": "Hiển thị thông tin về bot",
-        #         "func": handle_info
-        #     },
-        #     "say": {
-        #         "desc": "Lặp lại nội dung bạn nhập (!say <nội dung>)",
-        #         "func": handle_say
-        #     },
-        #     "dem": {
-        #         "desc": "Tăng số đếm của bạn lên 1",
-        #         "func": handle_count
-        #     },
-        #     "check": {
-        #         "desc": "Kiểm tra số đếm hiện tại của bạn",
-        #         "func": handle_count
-        #     },
-        #     "top": {
-        #         "desc": "Xem bảng xếp hạng đếm số",
-        #         "func": handle_count
-        #     },
-        #     "reset": {
-        #         "desc": "Reset tất cả count về 0 (chỉ admin)",
-        #         "func": handle_count
-        #     }
-        # }
+        self.user_histories = {}
+
+        # Làm sạch dữ liệu AI khi khởi tạo bot
+        with open(self.training_data_file, 'w') as f:
+            json.dump([], f)  # Ghi một mảng rỗng vào file
+
+        self.commands = {
+            "help": {
+                "desc": "Hiển thị danh sách lệnh",
+                "func": handle_help
+            },
+            "ping": {
+                "desc": "Kiểm tra bot có hoạt động không",
+                "func": handle_ping
+            },
+            "info": {
+                "desc": "Hiển thị thông tin về bot",
+                "func": handle_info
+            },
+            "say": {
+                "desc": "Lặp lại nội dung bạn nhập (!say <nội dung>)",
+                "func": handle_say
+            },
+            "dem": {
+                "desc": "Tăng số đếm của bạn lên 1",
+                "func": handle_count
+            },
+            "check": {
+                "desc": "Kiểm tra số đếm hiện tại của bạn",
+                "func": handle_count
+            },
+            "top": {
+                "desc": "Xem bảng xếp hạng đếm số",
+                "func": handle_count
+            },
+            "reset": {
+                "desc": "Reset tất cả count về 0 (chỉ admin)",
+                "func": handle_count
+            }
+        }
         self.load_data()
 
     def load_data(self):
@@ -168,6 +176,37 @@ class CustomClient(ZaloAPI):
         except Exception as e:
             print(f"{Fore.RED}Lỗi lấy thông tin người dùng: {e}")
             return 'Unknown'
+    def ask_ai(self, author_id):
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": "Bearer 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",
+            "Content-Type": "application/json"
+        }
+
+        # Lấy lịch sử hội thoại của user
+        history = self.user_histories.get(author_id, [])
+        messages = [{"role": "user", "content": msg} for msg in history]
+
+        # Thêm dữ liệu huấn luyện từ file
+        with open(self.training_data_file, 'r') as f:
+            training_data = json.load(f)
+        for training_msg in training_data:
+            messages.insert(0, {"role": "system", "content": training_msg})
+
+        # Thêm hướng dẫn trả lời tiếng Việt
+        messages.insert(0, {"role": "system", "content": "Hãy nhập vai là một cậu học sinh, 18 tuổi, chúng ta là bạn bè rất thân, cậu rất quan tâm đến tôi, hay tán gẫu, hãy nói chuyện thật tự nhiên với tôi bằng tiếng Việt."})
+
+        data = {
+            "model": "openai/gpt-3.5-turbo",
+            "messages": messages
+        }
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            print(f"[AI] Lỗi gọi API: {e}")
+            return "Xin lỗi, tôi không thể phản hồi ngay lúc này."
 
     def fetchUserInfo(self, userId):
         try:
@@ -185,218 +224,61 @@ class CustomClient(ZaloAPI):
             print(f"{Fore.RED}Lỗi lấy thông tin người dùng: {e}")
             return userId
 
-    # def handle_help(self,
-    #                 message_object,
-    #                 thread_id,
-    #                 thread_type,
-    #                 args,
-    #                 author_id=None):
-    #     response = "📜 **Danh sách lệnh của bot** 📜\n"
-    #     for cmd, info in self.commands.items():
-    #         response += f"**{self.prefix}{cmd}**: {info['desc']}\n"
-    #     response += f"\nSử dụng `{self.prefix}<lệnh>` để gọi bot!"
-    #     self.send(Message(text=response), thread_id, thread_type)
+    
 
-    # def handle_ping(self,
-    #                 message_object,
-    #                 thread_id,
-    #                 thread_type,
-    #                 args,
-    #                 author_id=None):
-    #     self.send(Message(text="Pong! 🏓 Bot đang hoạt động!"), thread_id,
-    #               thread_type)
-
-    # def handle_info(self,
-    #                 message_object,
-    #                 thread_id,
-    #                 thread_type,
-    #                 args,
-    #                 author_id=None):
-    #     response = "🤖 **Thông tin về bot** 🤖\n"
-    #     response += "Tên: Zalo Bot\nPhiên bản: 1.0\nTác giả: Your Name\nPrefix: !\nMô tả: Bot cơ bản cho Zalo với tính năng đếm số."
-    #     self.send(Message(text=response), thread_id, thread_type)
-
-    # def handle_say(self,
-    #                message_object,
-    #                thread_id,
-    #                thread_type,
-    #                args,
-    #                author_id=None):
-    #     if args:
-    #         response = "🗣️ Bạn nói: " + " ".join(args)
-    #         self.send(Message(text=response), thread_id, thread_type)
-    #     else:
-    #         self.send(
-    #             Message(text="Vui lòng nhập nội dung! Ví dụ: !say Xin chào"),
-    #             thread_id, thread_type)
-
-    # def handle_dem(self,
-    #                message_object,
-    #                thread_id,
-    #                thread_type,
-    #                args,
-    #                author_id=None):
-    #     """Xử lý lệnh !dem - tăng count của user lên 1"""
-    #     try:
-    #         # Khởi tạo count cho user nếu chưa tồn tại
-    #         self.initialize_count_for_user(thread_id, author_id)
-
-    #         # Tăng count lên 1
-    #         self.count_data[thread_id][author_id] += 1
-    #         current_count = self.count_data[thread_id][author_id]
-
-    #         # Lấy tên user
-    #         user_name = self.get_user_display_name(author_id)
-
-    #         # Gửi thông báo
-    #         response = f"🎯 {user_name} đã đếm! Số lần đếm hiện tại: {current_count}"
-    #         self.send(Message(text=response), thread_id, thread_type)
-
-    #         # Lưu dữ liệu
-    #         self.save_data()
-
-    #     except Exception as e:
-    #         print(f"{Fore.RED}Lỗi xử lý lệnh dem: {e}")
-    #         self.send(Message(text="Có lỗi xảy ra khi xử lý lệnh đếm!"),
-    #                   thread_id, thread_type)
-
-    # def handle_check(self,
-    #                  message_object,
-    #                  thread_id,
-    #                  thread_type,
-    #                  args,
-    #                  author_id=None):
-    #     """Xử lý lệnh !check - kiểm tra count hiện tại của user"""
-    #     try:
-    #         # Khởi tạo count cho user nếu chưa tồn tại
-    #         self.initialize_count_for_user(thread_id, author_id)
-
-    #         current_count = self.count_data[thread_id][author_id]
-    #         user_name = self.get_user_display_name(author_id)
-
-    #         # Gửi thông báo
-    #         response = f"📊 {user_name} đã đếm tổng cộng: {current_count} lần"
-    #         self.send(Message(text=response), thread_id, thread_type)
-
-    #     except Exception as e:
-    #         print(f"{Fore.RED}Lỗi xử lý lệnh check: {e}")
-    #         self.send(Message(text="Có lỗi xảy ra khi kiểm tra số đếm!"),
-    #                   thread_id, thread_type)
-
-    # def handle_top(self,
-    #                message_object,
-    #                thread_id,
-    #                thread_type,
-    #                args,
-    #                author_id=None):
-    #     """Xử lý lệnh !top - hiển thị bảng xếp hạng"""
-    #     try:
-    #         if thread_id not in self.count_data or not self.count_data[
-    #                 thread_id]:
-    #             self.send(
-    #                 Message(
-    #                     text=
-    #                     "📊 Chưa có dữ liệu đếm nào trong cuộc trò chuyện này!"
-    #                 ), thread_id, thread_type)
-    #             return
-
-    #         # Sắp xếp theo count giảm dần
-    #         sorted_users = sorted(self.count_data[thread_id].items(),
-    #                               key=lambda x: x[1],
-    #                               reverse=True)
-
-    #         # Tạo bảng xếp hạng
-    #         response = "🏆 BẢNG XẾP HẠNG ĐẾM SỐ 🏆\n\n"
-
-    #         for i, (user_id, count) in enumerate(sorted_users[:10]):  # Top 10
-    #             user_name = self.get_user_display_name(user_id)
-    #             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"{i+1}."
-    #             response += f"{medal} {user_name}: {count} lần\n"
-
-    #         self.send(Message(text=response), thread_id, thread_type)
-
-    #     except Exception as e:
-    #         print(f"{Fore.RED}Lỗi xử lý lệnh top: {e}")
-    #         self.send(
-    #             Message(text="Có lỗi xảy ra khi hiển thị bảng xếp hạng!"),
-    #             thread_id, thread_type)
-
-    # def handle_reset(self,
-    #                  message_object,
-    #                  thread_id,
-    #                  thread_type,
-    #                  args,
-    #                  author_id=None):
-    #     """Xử lý lệnh !reset - reset tất cả count về 0 (chỉ admin hoặc owner)"""
-    #     try:
-    #         # Danh sách ID được phép reset (thay bằng ID của bạn)
-    #         authorized_users = ['5218488050389102343'
-    #                             ]  # Thêm ID của bạn và admin khác
-
-    #         if author_id not in authorized_users:
-    #             self.send(Message(text="❌ Chỉ admin mới có thể reset count!"),
-    #                       thread_id, thread_type)
-    #             return
-
-    #         # Reset tất cả count về 0
-    #         if thread_id in self.count_data:
-    #             for user_id in self.count_data[thread_id]:
-    #                 self.count_data[thread_id][user_id] = 0
-    #             self.save_data()
-    #             self.send(Message(text="🔄 Đã reset tất cả count về 0!"),
-    #                       thread_id, thread_type)
-    #         else:
-    #             self.send(Message(text="📊 Chưa có dữ liệu đếm nào để reset!"),
-    #                       thread_id, thread_type)
-
-    #     except Exception as e:
-    #         print(f"{Fore.RED}Lỗi xử lý lệnh reset: {e}")
-    #         self.send(Message(text="Có lỗi xảy ra khi reset count!"),
-    #                   thread_id, thread_type)
-
-    def onMessage(self, mid, author_id, message, message_object, thread_id,
-                  thread_type):
+    def onMessage(self, mid, author_id, message, message_object, thread_id, thread_type):
         print(f"{Fore.GREEN}Received message:\n"
               f"- Message: {Style.BRIGHT}{message}{Style.NORMAL}\n"
               f"- Author ID: {Fore.CYAN}{author_id}\n"
               f"- Thread ID: {Fore.YELLOW}{thread_id}\n"
               f"- Thread Type: {Fore.BLUE}{thread_type}\n")
+        content = ""
+        if hasattr(message_object, 'content') and isinstance(message_object.content, str):
+            content = message_object.content.strip()
+        else:
+            content = str(message).strip()
 
+        # Lưu tin nhắn vào file huấn luyện
+        if author_id != str(self.uid) and not content.startswith(self.prefix):
+            with open(self.training_data_file, 'r') as f:
+                training_data = json.load(f)
+            training_data.append(content)
+            with open(self.training_data_file, 'w') as f:
+                json.dump(training_data, f, indent=4)
+
+        # Chỉ phản hồi AI nếu không phải tin nhắn của bot, không phải lệnh
+        if author_id != str(self.uid) and not content.startswith(self.prefix):
+            if author_id not in self.user_histories:
+                self.user_histories[author_id] = []
+            self.user_histories[author_id].append(content)
+            self.user_histories[author_id] = self.user_histories[author_id][-10:]
+
+            # Thêm độ trễ ngẫu nhiên trước khi gọi AI
+            delay = random.randint(5, 20)  # Độ trễ từ 5 đến 20 giây
+            print(f"{Fore.YELLOW}Đợi {delay} giây trước khi gọi AI...")
+            time.sleep(delay)
+
+            ai_reply = self.ask_ai(author_id)
+            self.send(Message(text=ai_reply), thread_id, thread_type)
+
+        # Xử lý các lệnh khác
         try:
             self.update_message_count(thread_id, author_id)
-
-            # Khởi tạo count cho user khi họ gửi tin nhắn lần đầu
             self.initialize_count_for_user(thread_id, author_id)
-
-            if hasattr(message_object, 'content') and isinstance(
-                    message_object.content, str):
-                content = message_object.content.strip()
-                if content.startswith(self.prefix):
-                    command = content[len(self.prefix):].split()[0].lower(
-                    ) if content[len(self.prefix):] else ""
-                    args = content[len(self.prefix) +
-                                   len(command):].strip().split()
-                    if command in self.commands:
-                        if author_id not in self.excluded_user_ids:
-                            self.commands[command]["func"](self,
-                                                           message_object,
-                                                           thread_id,
-                                                           thread_type, args,
-                                                           author_id)
-                        else:
-                            self.send(
-                                Message(
-                                    text="Bạn không được phép sử dụng bot!"),
-                                thread_id, thread_type)
-                    elif command:
-                        self.send(
-                            Message(
-                                text=
-                                f"Lệnh `{self.prefix}{command}` không tồn tại. Gõ `{self.prefix}help` để xem danh sách lệnh."
-                            ), thread_id, thread_type)
-
+            if content.startswith(self.prefix):
+                command = content[len(self.prefix):].split()[0].lower() if content[len(self.prefix):] else ""
+                args = content[len(self.prefix) + len(command):].strip().split()
+                if command in self.commands:
+                    if author_id not in self.excluded_user_ids:
+                        self.commands[command]["func"](self, message_object, thread_id, thread_type, args, author_id)
+                    else:
+                        self.send(Message(text="Bạn không được phép sử dụng bot!"), thread_id, thread_type)
+                elif command:
+                    self.send(
+                        Message(
+                            text=f"Lệnh `{self.prefix}{command}` không tồn tại. Gõ `{self.prefix}help` để xem danh sách lệnh."
+                        ), thread_id, thread_type)
             self.save_data()
-
         except Exception as ex:
             print(f"{Fore.RED}Lỗi xử lý tin nhắn: {ex}")
             self.send(Message(text=f"Lỗi: {str(ex)}"), thread_id, thread_type)
@@ -435,38 +317,48 @@ class CustomClient(ZaloAPI):
         except Exception as e:
             print(f"{Fore.RED}Lỗi dừng bot: {e}")
 
-
+conversation_starters = [
+    "Chào Minh! Hôm nay cậu thế nào?",
+    "Cậu đang làm gì vậy?",
+    "Minh đã ăn gì chưa? Nhớ ăn uống đầy đủ nhé!",
+    "Hôm nay có gì vui không? Kể mình nghe với!",
+    "Cậu có đang bận không? Mình muốn trò chuyện với cậu.",
+    "Cậu có thích nghe nhạc không? Gần đây mình nghe được bài rất hay!",
+    "Minh có kế hoạch gì cho ngày hôm nay không?",
+    "Cậu có muốn chia sẻ điều gì thú vị không?",
+    "Cậu có đang cảm thấy vui không? Nếu không, mình ở đây để lắng nghe cậu.",
+    "Cậu có muốn mình kể một câu chuyện vui không?"
+]
 def main():
     """Hàm main để chạy bot trực tiếp"""
-    def access_website_periodically():
-        """Truy cập website mỗi 10 phút liên tục"""
-        while True:
-            time.sleep(600)  # 10 phút = 600 giây
-            try:
-                # Thay thế URL này bằng website bạn muốn truy cập
-                website_url = "https://66dde611-6b38-4f72-b477-82cfd474e992-00-37jxjgthrls3.janeway.replit.dev/health"
-                response = requests.get(website_url, timeout=10)
-                utc8_time = time.strftime('%a %b %d %H:%M:%S %Y', time.localtime())
-                if response.status_code == 200:
-                    print(f"{Fore.GREEN}✅ Đã truy cập website thành công lúc {utc8_time}")
-                else:
-                    print(f"{Fore.YELLOW}⚠️ Truy cập website thất bại với status: {response.status_code}")
-            except Exception as e:
-                print(f"{Fore.RED}❌ Lỗi truy cập website: {e}")
-
     # Khởi tạo client
     client = CustomClient('api_key',
                           'secret_key',
                           imei=imei,
                           session_cookies=session_cookies)
 
-    # Chạy thread truy cập website định kỳ
-    website_thread = threading.Thread(target=access_website_periodically, daemon=True)
-    website_thread.start()
-    print(f"{Fore.CYAN}🕐 Đã bắt đầu truy cập website mỗi 10 phút...")
+    # Chạy thread nhắn tin chủ động
+    bot_thread = threading.Thread(target=bot_initiate_conversation, args=(client,), daemon=True)
+    bot_thread.start()
+    print(f"{Fore.CYAN}🕐 Bot đã bắt đầu chủ động nhắn tin mỗi phút với xác suất 50%.")
 
     # Chạy bot
     client.listen()
 
+def bot_initiate_conversation(client):
+    """Bot chủ động nhắn tin với xác suất 50% mỗi phút"""
+    while True:
+        time.sleep(60)  # Chờ 1 phút
+        if random.random() < 0.5:  # 50% xác suất
+            try:
+                message = random.choice(conversation_starters)
+                thread_id = "124370956160882574"  # Thay bằng ID của bạn
+                thread_type = ThreadType.GROUP  # Loại thread (USER hoặc GROUP)
+                client.send(Message(text=message), thread_id, thread_type)
+                print(f"{Fore.CYAN}Bot đã chủ động nhắn tin: {message}")
+            except Exception as e:
+                print(f"{Fore.RED}Lỗi khi bot chủ động nhắn tin: {e}")
+
 if __name__ == "__main__":
     main()
+
