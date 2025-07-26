@@ -3366,6 +3366,8 @@ class ZaloAPI(object):
 			background (bool): Listen in the background (Default: False)
 		
 		"""
+		print(f"{Fore.GREEN}[BOT] Đã khởi chạy thành công và đang nghe...")
+
 		self.onListening()
 		self.startListening(delay, test, background)
 		if background:

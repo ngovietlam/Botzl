@@ -354,6 +354,8 @@ def main():
     client.listening = True
     # Chạy bot chính
     client.listen()
+    #print(f"{Fore.GREEN}[BOT] Đã khởi chạy thành công và đang nghe...")
+
 
 def bot_initiate_conversation(client):
     """Bot chủ động nhắn tin với xác suất 50% mỗi phút"""
@@ -373,6 +375,7 @@ client = CustomClient('api_key',
                         'secret_key',
                         imei=imei,
                         session_cookies=session_cookies)
+
 if __name__ == "__main__":
     main()
 
