@@ -181,36 +181,41 @@ class CustomClient(ZaloAPI):
             print(f"{Fore.RED}Lỗi lấy thông tin người dùng: {e}")
             return 'Unknown'
     def ask_ai(self, author_id):
-        url = "https://openrouter.ai/api/v1/chat/completions"
+        url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
-            "Authorization": "Bearer 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",
+            "Authorization": "Bearer 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",  # Thay bằng Groq API key thật
             "Content-Type": "application/json"
         }
 
-        # Lấy lịch sử hội thoại của user
+        # Lấy lịch sử hội thoại
         history = self.user_histories.get(author_id, [])
         messages = [{"role": "user", "content": msg} for msg in history]
 
         # Thêm dữ liệu huấn luyện từ file
-        with open(self.training_data_file, 'r') as f:
+        with open(self.training_data_file, 'r', encoding='utf-8') as f:
             training_data = json.load(f)
         for training_msg in training_data:
             messages.insert(0, {"role": "system", "content": training_msg})
 
-        # Thêm hướng dẫn trả lời tiếng Việt
-        messages.insert(0, {"role": "system", "content": "Hãy nhập vai là một cậu học sinh, 18 tuổi, chúng ta là bạn bè rất thân, cậu rất quan tâm đến tôi, hay tán gẫu, hãy nói chuyện thật tự nhiên với tôi bằng tiếng Việt."})
+        # Thêm prompt định hướng vai trò
+        messages.insert(0, {
+            "role": "system",
+            "content": "Hãy nhập vai là một cậu học sinh, 18 tuổi, chúng ta là bạn bè rất thân, cậu rất quan tâm đến tôi, hay tán gẫu, hãy nói chuyện thật tự nhiên với tôi bằng tiếng Việt."
+        })
 
+        # Gửi request đến Groq API
         data = {
-            "model": "openai/gpt-3.5-turbo",
+            "model": "gemma2-9b-it",  # hoặc gpt-3.5-turbo nếu Groq hỗ trợ
             "messages": messages
         }
-        try:
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
+
+        response = requests.post(url, headers=headers, json=data)
+
+        if response.status_code == 200:
             return response.json()["choices"][0]["message"]["content"]
-        except Exception as e:
-            print(f"[AI] Lỗi gọi API: {e}")
-            return "Xin lỗi, tôi không thể phản hồi ngay lúc này."
+        else:
+            print("Groq API Error:", response.text)
+            return "Xin lỗi, tôi đang gặp sự cố khi truy cập AI."
 
     def fetchUserInfo(self, userId):
         try:
@@ -341,10 +346,10 @@ def main():
 
    
 
-    # Chạy thread nhắn tin chủ động
-    bot_thread = threading.Thread(target=bot_initiate_conversation, args=(client,), daemon=True)
-    bot_thread.start()
-    print(f"{Fore.CYAN}🕐 Bot đã bắt đầu chủ động nhắn tin mỗi phút với xác suất 50%.")
+    # # Chạy thread nhắn tin chủ động
+    # bot_thread = threading.Thread(target=bot_initiate_conversation, args=(client,), daemon=True)
+    # bot_thread.start()
+    # print(f"{Fore.CYAN}🕐 Bot đã bắt đầu chủ động nhắn tin mỗi phút với xác suất 50%.")
         # Cập nhật trạng thái client đã hoạt động
     client.listening = True
     # Chạy bot chính
